@@ -1,0 +1,11 @@
+# Ignore logs and temporary files
+*.log
+*.tmp
+
+# Ignore all files in a directory
+/Database/forecast_data/
+/Database/Paranagua_CEMADEN/
+
+# Ignore specific files
+Parada_2024_chuva.xlsx
+Database/README
