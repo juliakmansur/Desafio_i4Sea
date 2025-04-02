@@ -37,22 +37,17 @@ class OperationAnalyzer:
     def analisar_variaveis(self, variaveis, export_path: str = None):
         df = self.df_forecast.copy()
 
-        # Separar dados com e sem parada
         df0 = df[df[self.target_col] == 0][variaveis].describe().T
         df1 = df[df[self.target_col] == 1][variaveis].describe().T
 
-        # Renomear colunas para indicar grupo
         df0.columns = [f'{col}_sem_parada' for col in df0.columns]
         df1.columns = [f'{col}_com_parada' for col in df1.columns]
 
-        # Juntar estatísticas lado a lado
         stats = pd.concat([df0, df1], axis=1)
 
-        # Calcular diferença entre médias
         stats['diferenca_media'] = stats['mean_com_parada'] - stats['mean_sem_parada']
         stats = stats.reset_index().rename(columns={'index': 'variavel'})
 
-        # Exportar se solicitado
         if export_path:
             stats.to_csv(export_path, index=False)
 

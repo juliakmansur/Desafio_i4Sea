@@ -29,7 +29,7 @@ class RecomendadorOperacional:
                     modelo, cenario = partes
                     key = f'{modelo.lower()}_{cenario}'
                     df = pd.read_csv(os.path.join(self.base_model_path, nome_arquivo))
-                    variaveis[key] = df['variavel'].tolist()  # <- agora carrega 'variavel' e binariza depois
+                    variaveis[key] = df['variavel'].tolist()
         return variaveis
 
     def carregar_modelo(self, modelo: str, cenario: str):
@@ -53,7 +53,7 @@ class RecomendadorOperacional:
         dados = {}
         for var in variaveis:
             if var in ds:
-                valores = ds[var][:, lat_idx, lon_idx].values  # Extrai apenas (time)
+                valores = ds[var][:, lat_idx, lon_idx].values
                 dados[var] = valores
             else:
                 raise ValueError(f'Variável "{var}" não encontrada no NetCDF.')
@@ -75,10 +75,9 @@ class RecomendadorOperacional:
         variaveis_originais = self.variaveis_por_cenario[key]
         df = self.extrair_variaveis_netcdf(path_nc, variaveis_originais, lat=lat, lon=lon)
 
-        # ✅ Carrega thresholds e binariza
         thresholds = pd.read_csv("../Output/Analise_02/Tables/melhores_thresholds.csv")
         thresholds = thresholds[thresholds["variavel"].isin(variaveis_originais)]
-        thresholds = thresholds.set_index("variavel")  # facilita acesso direto
+        thresholds = thresholds.set_index("variavel")
 
         variaveis_bin = []
         for var in variaveis_originais:
@@ -150,7 +149,6 @@ class RecomendadorVisual:
             fig_path = os.path.join(salvar_em, f'{nome_arquivo}.png')
             resultado.to_csv(os.path.join(salvar_em, f'{nome_arquivo}.csv'), index=False)
 
-            # Exporta apenas os períodos consolidados de recomendação
             resultado_sorted = resultado.sort_values('time')
             resultado_sorted['grupo'] = (resultado_sorted['parada_recomendada'] != resultado_sorted['parada_recomendada'].shift()).cumsum()
             grupos = resultado_sorted[resultado_sorted['parada_recomendada'] == 1].groupby('grupo')

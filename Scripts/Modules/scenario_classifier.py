@@ -35,7 +35,6 @@ class RainScenarioClassifier:
                 X, y, test_size=0.25, stratify=y, random_state=42
             )
 
-            # Modelos
             model_rf = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
             model_rf.fit(X_train, y_train)
 
@@ -45,14 +44,12 @@ class RainScenarioClassifier:
             self._avaliar_modelo(model_rf, X_test, y_test, nome_cenario, 'RandomForest')
             self._avaliar_modelo(model_lr, X_test, y_test, nome_cenario, 'LogisticRegression')
 
-            # Salva modelos
             modelo_rf_path = f"{self.base_output}/Modelos/{modelo_nome}/model_randomforest_{nome_cenario}.pkl"
             modelo_lr_path = f"{self.base_output}/Modelos/{modelo_nome}/model_logisticregression_{nome_cenario}.pkl"
             joblib.dump(model_rf, modelo_rf_path)
             joblib.dump(model_lr, modelo_lr_path)
             print(f"Modelos salvos: {modelo_rf_path} e {modelo_lr_path}")
 
-            # Salva variáveis
             df_vars = pd.DataFrame({
                 'variavel': [v for v, _ in regras],
                 'variavel_bin': variaveis_binarias
@@ -61,16 +58,17 @@ class RainScenarioClassifier:
                 var_path = f"{self.base_output}/Modelos/{modelo_nome}/variaveis_{m}_{nome_cenario}.csv"
                 df_vars.to_csv(var_path, index=False)
 
-            # Importância - RF
-            self._plot_importancia_variaveis(model_rf.feature_importances_, X.columns,
-                                             nome_cenario, modelo_nome, tipo='rf')
-            # Importância - LR
+            self._plot_importancia_variaveis(
+                model_rf.feature_importances_, X.columns,
+                nome_cenario, modelo_nome, tipo='rf'
+                )
             coef = model_lr.coef_[0]
             importancias_lr = np.abs(coef)
-            self._plot_importancia_variaveis(importancias_lr, X.columns,
-                                             nome_cenario, modelo_nome, tipo='lr')
+            self._plot_importancia_variaveis(
+                importancias_lr, X.columns,
+                nome_cenario, modelo_nome, tipo='lr'
+                )
 
-        # Exporta métricas gerais
         metricas_df = pd.DataFrame(self.metricas_modelos)
         os.makedirs(f"{self.base_output}/Tables", exist_ok=True)
         metricas_df.to_csv(f"{self.base_output}/Tables/metricas_{modelo_nome.lower()}_por_cenario.csv", index=False)
