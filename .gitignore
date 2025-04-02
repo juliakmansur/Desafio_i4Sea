@@ -1,6 +1,7 @@
 # Ignore logs and temporary files
 *.log
 *.tmp
+*.vscode
 
 # Ignore all files in a directory
 /Database/forecast_data/
