@@ -52,11 +52,12 @@ git clone https://github.com/juliakmansur/Desafio_i4Sea.git
 ```bash
 pip install -r requirements.txt
 ```
-3. Navegue pelos notebooks na pasta `Scripts/` na ordem numérica:
-    - `00_unpack_and_organize.ipynb`
+3. Navegue pelos notebooks na pasta `Scripts/` na ordem:
+    - `unpack_and_organize.py`
     - `01_load_and_merge.ipynb`
     - `02_exploratory_analysis.ipynb`
     - `03_decision_model.ipynb`
+    - `04_get_recomendation.ipynb`
 
 ---
 
