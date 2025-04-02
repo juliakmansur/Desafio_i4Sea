@@ -1,0 +1,32 @@
+variables_info = {
+    'variaveis': [
+        'lwe_precipitation_smooth_rate',
+        'lwe_precipitation_smooth_rate_minimum_10km',
+        'lwe_precipitation_smooth_rate_maximum_10km',
+        'precipitation_probability_10km',
+        'lwe_precipitation_smooth_rate_maximum_20km',
+        'lwe_precipitation_smooth_rate_minimum_20km',
+        'precipitation_probability_20km',
+        'lwe_precipitation_smooth_rate_minimum_35km',
+        'lwe_precipitation_smooth_rate_maximum_35km',
+        'precipitation_probability_35km',
+        'lwe_precipitation_smooth_rate_minimum_55km',
+        'lwe_precipitation_smooth_rate_maximum_55km',
+        'precipitation_probability_55km',
+    ],
+    'legendas': [
+        'Tx. de Precipitacao (mm/h)',
+        'Tx. de Precipitacao (mm/h) Mín. em um Raio de 10km',
+        'Tx. de Precipitacao (mm/h) Màx. em um Raio de 10km',
+        'Probabilidade de Chuva (%) em uma Raio de 10km',
+        'Tx. de Precipitacao (mm/h) Màx. em um Raio de 20km',
+        'Tx. de Precipitacao (mm/h) Mín. em um Raio de 20km',
+        'Probabilidade de Chuva (%) em uma Raio de 20km',
+        'Tx. de Precipitacao (mm/h) Mín. em um Raio de 35km',
+        'Tx. de Precipitacao (mm/h) Màx. em um Raio de 35km',
+        'Probabilidade de Chuva (%) em uma Raio de 35km',
+        'Tx. de Precipitacao (mm/h) Mín. em um Raio de 55km',
+        'Tx. de Precipitacao (mm/h) Màx. em um Raio de 55km',
+        'Probabilidade de Chuva (%) em uma Raio de 55km',
+    ]
+}
