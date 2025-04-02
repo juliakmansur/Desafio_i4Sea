@@ -114,28 +114,19 @@ Com base nos thresholds, foram gerados dois modelos de decisão binária:
 
 ### 4. Estratégia de Classificação por Cenário
 
-Foram definidos três cenários de decisão com diferentes níveis de tolerância ao risco de parada por chuva: **conservador**, **moderado** e **arrojado**. A seleção das variáveis e seus limiares (`thresholds`) foi feita com base na **melhor combinação de F1-score**, balanceando **precisão** e **recall**, conforme observado nos dados históricos.
+Com base nas análises estatísticas e no desempenho preditivo das variáveis (F1-score, precision e recall), foram definidos três cenários de decisão — **conservador**, **moderado** e **arrojado** — que representam diferentes níveis de tolerância ao risco de parada por chuva.
 
-#### Cenário Conservador
-- **Objetivo:** Prioriza a segurança, com maior sensibilidade (recall), aceitando maior número de falsos positivos.
-- **Variável:** `precipitation_probability_55km`
-- **Limiar:** 15.0
-- **Desempenho:** F1-score = 0.667, Precision = 0.57, Recall = 0.79
+Cada cenário combina uma ou mais variáveis-chave com limiares específicos, permitindo decisões rápidas, mesmo por usuários não técnicos:
 
-#### Cenário Moderado
-- **Objetivo:** Balanceia risco e segurança, usando múltiplas variáveis.
-- **Variáveis:**
-  - `precipitation_probability_35km` ≥ 25.0 → F1-score = 0.667
-  - `lwe_precipitation_smooth_rate_maximum_35km` ≥ 0.5 → F1-score = 0.651
-- **Decisão:** Parada sugerida somente se ambas as condições forem satisfeitas.
+- 🔵 **Conservador**: prioriza segurança e indica mais paradas
+- 🟡 **Moderado**: busca equilíbrio entre operação e segurança
+- 🔴 **Arrojado**: minimiza paradas e assume maior risco
 
-#### Cenário Arrojado
-- **Objetivo:** Minimiza interrupções, aceitando maior risco de erro tipo II (falsos negativos).
-- **Variáveis:**
-  - `precipitation_probability_20km` ≥ 30.0 → F1-score = 0.635
-  - `lwe_precipitation_smooth_rate_maximum_20km` ≥ 0.4 → F1-score = 0.659
+A lógica de decisão final adotou a regra **"OR" entre condições**:
+> A operação é interrompida se **qualquer uma das variáveis-chave ultrapassar o threshold estabelecido**.
 
----
+Os detalhes de variáveis, thresholds e métricas de desempenho estão apresentados na seção de **Resultados**.
+
 
 ## Resultados
 
@@ -151,16 +142,26 @@ Essas variáveis lideraram o **ranking combinado de estatística + desempenho pr
 
 Além disso, variáveis de precipitação máxima (`lwe_precipitation_maximum_35km` e `20km`) foram integradas como **filtros adicionais**, reforçando a intensidade da precipitação no processo decisório.
 
-A lógica de decisão final adotou a regra **"OR" entre condições**:
-> A operação é interrompida se **qualquer uma das variáveis-chave ultrapassar o threshold estabelecido**.
-
 Esse modelo de decisão possibilitou a construção de três cenários adaptáveis ao apetite ao risco operacional:
 
-| Cenário       | Características                                                   |
-|---------------|--------------------------------------------------------------------|
-| 🔵 Conservador | Indica mais paradas, priorizando segurança                         |
-| 🟡 Moderado    | Equilíbrio entre produtividade e segurança                         |
-| 🔴 Arrojado    | Indica menos paradas, tolerando mais risco                         |
+- Cenário Conservador
+  - **Objetivo:** Prioriza a segurança, com maior sensibilidade (recall), aceitando maior número de falsos positivos.
+  - **Variável:** `precipitation_probability_55km`
+  - **Limiar:** 15.0
+  - **Desempenho:** F1-score = 0.667, Precision = 0.57, Recall = 0.79
+
+- Cenário Moderado
+  - **Objetivo:** Balanceia risco e segurança, usando múltiplas variáveis.
+  - **Variáveis:**
+    - `precipitation_probability_35km` ≥ 25.0 → F1-score = 0.667
+    - `lwe_precipitation_smooth_rate_maximum_35km` ≥ 0.5 → F1-score = 0.651
+  - **Decisão:** Parada sugerida somente se ambas as condições forem satisfeitas.
+
+- Cenário Arrojado
+  - **Objetivo:** Minimiza interrupções, aceitando maior risco de erro tipo II (falsos negativos).
+  - **Variáveis:**
+    - `precipitation_probability_20km` ≥ 30.0 → F1-score = 0.635
+    - `lwe_precipitation_smooth_rate_maximum_20km` ≥ 0.4 → F1-score = 0.659
 
 Modelos de classificação supervisionada — **Random Forest** e **Regressão Logística** — foram aplicados como forma complementar de análise. Embora os resultados obtidos ainda não tenham atingido o desempenho ideal (sugerindo a necessidade de um treinamento mais robusto e ajuste de hiperparâmetros), eles serviram como **instrumento exploratório adicional** para reforçar a importância das variáveis selecionadas nos cenários construídos.
 
@@ -177,5 +178,3 @@ Esses modelos ajudaram a validar, de forma preliminar, que as variáveis identif
 
 - Essas variáveis devem ser **ajustadas por thresholds** conforme o **cenário desejado**.
 - O cliente, mesmo leigo, pode se beneficiar de um sistema que responde: **“Devo ou não operar?”**, com base em cenários visuais e métricas claras.
-
-> Resultado: Dados transformados em poder de decisão para o cliente.
