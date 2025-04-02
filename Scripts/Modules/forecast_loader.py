@@ -7,29 +7,33 @@ import numpy as np
 
 
 class ForecastLoader:
-    def __init__(self, folder_path, lat_target, lon_target):
+    """
+    Classe para carregamento de dados de previsão atmosférica em arquivos NetCDF,
+    com extração da grade mais próxima ao ponto de interesse e estruturação em formato tabular.
+    """
+
+    def __init__(self, folder_path: str, lat_target: float, lon_target: float):
         self.folder_path = folder_path
         self.lat_target = lat_target
         self.lon_target = lon_target
 
-    def _find_closest_point(self, ds):
+    def _find_closest_point(self, ds: xr.Dataset) -> Tuple[int, int]:
         lat = ds['lat'].values
         lon = ds['lon'].values
 
         distances = np.sqrt((lat - self.lat_target)**2 + (lon - self.lon_target)**2)
-        min_idx = np.unravel_index(np.argmin(distances), lat.shape)
 
-        return min_idx
+        return np.unravel_index(np.argmin(distances), lat.shape)
 
-    def _extract_from_file(self, file_path):
+    def _extract_from_file(self, file_path: str) -> List[dict]:
         ds = xr.open_dataset(file_path)
         i, j = self._find_closest_point(ds)
 
         if np.issubdtype(ds['time'].dtype, np.floating):
             ds['time'] = pd.to_datetime(ds['time'].values, unit='s')
 
-        time_values = ds['time'].values - np.timedelta64(3, 'h')
-        data_vars = [var for var in ds.data_vars]
+        time_values = ds['time'].values - np.timedelta64(3, 'h')  # Ajuste UTC-3
+        data_vars = list(ds.data_vars)
 
         records = []
         for t, time_val in enumerate(time_values):
@@ -54,17 +58,28 @@ class ForecastLoader:
         return months
 
     def load_forecasts(self, months: Union[str, List[str], Tuple[str, str]], drop_duplicates: bool = False) -> pd.DataFrame:
+        """
+        Carrega e organiza os dados de previsão para os meses indicados.
+
+        Parâmetros:
+            months: str, lista ou tupla indicando os meses no formato 'YYYYMM'
+            drop_duplicates: se True, mantém apenas a última previsão por instante de tempo
+
+        Retorna:
+            pd.DataFrame: dados em formato tabular com tempo, variáveis e metadados
+        """
+
         if isinstance(months, str):
             months = [months]
         elif isinstance(months, tuple):
             months = self._get_month_range(months[0], months[1])
 
         all_data = []
-        for m in months:
-            pattern = os.path.join(self.folder_path, f'*{m}*.nc')
+        for month in months:
+            pattern = os.path.join(self.folder_path, f'*{month}*.nc')
             files = sorted(glob(pattern))
-            for file in files:
-                all_data.extend(self._extract_from_file(file))
+            for file_path in files:
+                all_data.extend(self._extract_from_file(file_path))
 
         if not all_data:
             raise FileNotFoundError('Nenhum arquivo .nc encontrado para os meses fornecidos.')
@@ -76,6 +91,7 @@ class ForecastLoader:
         if drop_duplicates:
             df = df.sort_values('forecast_datetime').drop_duplicates(subset='time', keep='last')
 
+        # Reorganizar colunas
         cols = [col for col in df.columns if col not in ['file', 'forecast_datetime']]
 
         return df[cols + ['file', 'forecast_datetime']]

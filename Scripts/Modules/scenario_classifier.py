@@ -7,17 +7,34 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
+from typing import Dict, List, Tuple
 
 
 class RainScenarioClassifier:
-    def __init__(self, df, cenarios, base_output, legendas_dict):
+    """
+    Classe responsável por aplicar classificadores supervisionados (Random Forest e Regressão Logística)
+    sobre variáveis binárias geradas a partir de thresholds definidos em diferentes cenários.
+    """
+
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        cenarios: Dict[str, List[Tuple[str, float]]],
+        base_output: str,
+        legendas_dict: Dict[str, str]
+    ):
         self.df = df
         self.cenarios = cenarios
         self.base_output = base_output
         self.legendas_dict = legendas_dict
         self.metricas_modelos = []
 
-    def aplicar_classificacao(self, modelo_nome="Modelo_01"):
+    def aplicar_classificacao(self, modelo_nome: str = "Modelo_01") -> None:
+        """
+        Aplica classificadores RandomForest e LogisticRegression para cada cenário,
+        avalia desempenho e salva modelos e gráficos gerados.
+        """
+
         for nome_cenario, regras in self.cenarios.items():
             print(f"\n=== CENÁRIO: {nome_cenario.upper()} ===")
 
@@ -44,40 +61,47 @@ class RainScenarioClassifier:
             self._avaliar_modelo(model_rf, X_test, y_test, nome_cenario, 'RandomForest')
             self._avaliar_modelo(model_lr, X_test, y_test, nome_cenario, 'LogisticRegression')
 
-            modelo_rf_path = f"{self.base_output}/Modelos/{modelo_nome}/model_randomforest_{nome_cenario}.pkl"
-            modelo_lr_path = f"{self.base_output}/Modelos/{modelo_nome}/model_logisticregression_{nome_cenario}.pkl"
-            joblib.dump(model_rf, modelo_rf_path)
-            joblib.dump(model_lr, modelo_lr_path)
-            print(f"Modelos salvos: {modelo_rf_path} e {modelo_lr_path}")
+            # Salvar modelos
+            model_dir = os.path.join(self.base_output, "Modelos", modelo_nome)
+            os.makedirs(model_dir, exist_ok=True)
+            joblib.dump(model_rf, os.path.join(model_dir, f"model_randomforest_{nome_cenario}.pkl"))
+            joblib.dump(model_lr, os.path.join(model_dir, f"model_logisticregression_{nome_cenario}.pkl"))
+            print(f"Modelos salvos em {model_dir}")
 
+            # Salvar variáveis utilizadas
             df_vars = pd.DataFrame({
                 'variavel': [v for v, _ in regras],
                 'variavel_bin': variaveis_binarias
             })
             for m in ['logisticregression', 'randomforest']:
-                var_path = f"{self.base_output}/Modelos/{modelo_nome}/variaveis_{m}_{nome_cenario}.csv"
-                df_vars.to_csv(var_path, index=False)
+                df_vars.to_csv(os.path.join(model_dir, f'variaveis_{m}_{nome_cenario}.csv'), index=False)
 
+            # Importância das variáveis
             self._plot_importancia_variaveis(
                 model_rf.feature_importances_, X.columns,
                 nome_cenario, modelo_nome, tipo='rf'
-                )
-            coef = model_lr.coef_[0]
-            importancias_lr = np.abs(coef)
+            )
+            importancias_lr = np.abs(model_lr.coef_[0])
             self._plot_importancia_variaveis(
                 importancias_lr, X.columns,
                 nome_cenario, modelo_nome, tipo='lr'
-                )
+            )
 
+        # Salvar métricas globais
         metricas_df = pd.DataFrame(self.metricas_modelos)
         os.makedirs(f"{self.base_output}/Tables", exist_ok=True)
         metricas_df.to_csv(f"{self.base_output}/Tables/metricas_{modelo_nome.lower()}_por_cenario.csv", index=False)
 
-    def _avaliar_modelo(self, modelo, X_test, y_test, nome_cenario, nome_modelo):
+    def _avaliar_modelo(self, modelo, X_test: pd.DataFrame, y_test: pd.Series, nome_cenario: str, nome_modelo: str) -> None:
+        """
+        Avalia e armazena métricas de classificação do modelo.
+        """
+
         y_pred = modelo.predict(X_test)
         print(f"\n{nome_modelo}")
         print(classification_report(y_test, y_pred))
-        print("Matriz de Confusão:", confusion_matrix(y_test, y_pred))
+        print("Matriz de Confusão:")
+        print(confusion_matrix(y_test, y_pred))
 
         report = classification_report(y_test, y_pred, output_dict=True)
         for classe in ['0', '1']:
@@ -90,7 +114,14 @@ class RainScenarioClassifier:
                     'value': report[classe][metric]
                 })
 
-    def _plot_importancia_variaveis(self, importancias, variaveis, nome_cenario, modelo_nome, tipo='rf'):
+    def _plot_importancia_variaveis(
+        self, importancias: np.ndarray, variaveis: List[str],
+        nome_cenario: str, modelo_nome: str, tipo: str = 'rf'
+    ) -> None:
+        """
+        Plota gráfico de barras horizontal com importâncias das variáveis.
+        """
+
         nomes = [self.legendas_dict.get(v.replace('_bin', ''), v) for v in variaveis]
         importancias_series = pd.Series(importancias, index=nomes)
 
@@ -100,6 +131,7 @@ class RainScenarioClassifier:
         ax.set_title(f"Importância das Variáveis - Cenário {nome_cenario.capitalize()} ({tipo.upper()})")
         ax.set_xlim(0, .7 if tipo == 'rf' else 3)
         plt.tight_layout()
-        os.makedirs(f"{self.base_output}/Imagens/Metricas/{modelo_nome}", exist_ok=True)
-        plt.savefig(f"{self.base_output}/Imagens/Metricas/{modelo_nome}/importancia_variaveis_{tipo}_{nome_cenario}.png")
+        path = os.path.join(self.base_output, "Imagens", "Metricas", modelo_nome)
+        os.makedirs(path, exist_ok=True)
+        plt.savefig(os.path.join(path, f'importancia_variaveis_{tipo}_{nome_cenario}.png'))
         plt.close()

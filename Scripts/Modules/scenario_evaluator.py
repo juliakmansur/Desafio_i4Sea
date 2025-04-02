@@ -1,11 +1,25 @@
+import os
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from sklearn.metrics import precision_score, recall_score, f1_score, ConfusionMatrixDisplay
-import os
+import pandas as pd
+from typing import List, Tuple, Dict
 
 
 class RainScenarioModel:
-    def __init__(self, df, cenarios, base_output, legendas_dict, modelo_nome="Modelo_01"):
+    """
+    Classe responsável por aplicar regras binárias para diferentes cenários operacionais,
+    avaliando métricas de desempenho e gerando visualizações para tomada de decisão.
+    """
+
+    def __init__(
+            self,
+            df: pd.DataFrame,
+            cenarios: Dict[str, List[Tuple[str, float]]],
+            base_output: str,
+            legendas_dict: Dict[str, str],
+            modelo_nome: str = "Modelo_01"
+    ):
         self.df = df
         self.cenarios = cenarios
         self.base_output = base_output
@@ -13,11 +27,15 @@ class RainScenarioModel:
         self.modelo_nome = modelo_nome
 
     def ajustar_legenda(self, ax):
+        """Ajusta a legenda para visualização com múltiplas variáveis."""
+
         handles, labels = ax.get_legend_handles_labels()
         labels = [l.replace(') ', ')\n') for l in labels]
         ax.legend(handles, labels, loc='center left', bbox_to_anchor=(1.01, 0.5), fontsize='small')
 
     def aplicar_cenarios(self):
+        """Aplica os cenários definidos ao dataframe e gera outputs de avaliação."""
+
         for nome, regras in self.cenarios.items():
             if hasattr(regras, 'iterrows'):
                 try:
@@ -35,48 +53,58 @@ class RainScenarioModel:
             self._plotar_matriz_confusao(nome)
             self._plotar_series_temporais(nome, regras_list)
 
-    def _avaliar_regras(self, regras_list):
+    def _avaliar_regras(self, regras_list: List[Tuple[str, float]]) -> pd.Series:
+        """Aplica regra binária de decisão por variável (threshold)."""
         condicoes = [(self.df[var] > thresh) for var, thresh in regras_list]
         decisao = condicoes[0]
         for c in condicoes[1:]:
             decisao &= c
         return decisao.astype(int)
 
-    def _avaliar_metricas(self, nome, regras_list):
+    def _avaliar_metricas(self, nome: str, regras_list: List[Tuple[str, float]]):
+        """Imprime as métricas de classificação para o cenário."""
+
         y_true = self.df['parada']
         y_pred = self.df[f'cenario_{nome}']
         p = precision_score(y_true, y_pred, zero_division=0)
         r = recall_score(y_true, y_pred, zero_division=0)
         f1 = f1_score(y_true, y_pred, zero_division=0)
+
         print(f'\nCenário: {nome.upper()}')
         print('Variáveis usadas:')
         print(regras_list)
         print(f'Precision: {p:.2f} | Recall: {r:.2f} | F1 Score: {f1:.2f}')
 
-    def _plotar_matriz_confusao(self, nome):
+    def _plotar_matriz_confusao(self, nome: str):
+        """Gera e salva matriz de confusão para o cenário."""
+
         y_true = self.df['parada']
         y_pred = self.df[f'cenario_{nome}']
+
         fig, ax = plt.subplots(figsize=(7, 5))
         ConfusionMatrixDisplay.from_predictions(
             y_true, y_pred, ax=ax,
             display_labels=['Sem Parada', 'Com Parada'],
             cmap='Blues'
-            )
+        )
         ax.set_title(f'Matriz de Confusão - Cenário {nome.capitalize()}')
         plt.ylabel('Observação')
         plt.xlabel('Modelo')
         plt.tight_layout()
-        path = f'{self.base_output}/Imagens/{self.modelo_nome}/Metricas'
+
+        path = os.path.join(self.base_output, 'Imagens', self.modelo_nome, 'Metricas')
         os.makedirs(path, exist_ok=True)
-        plt.savefig(f'{path}/matriz_cenario_{nome}.png')
+        plt.savefig(os.path.join(path, f'matriz_cenario_{nome}.png'))
         plt.close()
 
-    def _plotar_series_temporais(self, nome, regras_list):
+    def _plotar_series_temporais(self, nome: str, regras_list: List[Tuple[str, float]]):
+        """Gera visualizações temporais para o cenário, separando por tipo de variável."""
+
         variaveis = [v for v, _ in regras_list]
         tipos = ['prob' if 'probability' in v else 'lwe' for v in variaveis]
         misto = 'prob' in tipos and 'lwe' in tipos
 
-        path = f'{self.base_output}/Imagens/{self.modelo_nome}/Serie_temporais'
+        path = os.path.join(self.base_output, 'Imagens', self.modelo_nome, 'Serie_temporais')
         os.makedirs(path, exist_ok=True)
 
         if misto:
@@ -84,7 +112,9 @@ class RainScenarioModel:
         else:
             self._plotar_simples(nome, variaveis, path)
 
-    def _plotar_misto(self, nome, variaveis, path):
+    def _plotar_misto(self, nome: str, variaveis: List[str], path: str):
+        """Plota séries temporais de probabilidade e precipitação separadas."""
+
         fig, axs = plt.subplots(4, 1, figsize=(16, 10), sharex=True)
 
         def plot_vars(ax, vars_list, fill_column, fill_label, color, title, ylabel):
@@ -95,7 +125,7 @@ class RainScenarioModel:
                 where=self.df[fill_column] == 1,
                 color=color, alpha=0.15,
                 transform=axs[ax].get_xaxis_transform(), label=fill_label
-                )
+            )
             axs[ax].set_title(title)
             axs[ax].set_ylabel(ylabel)
             axs[ax].set_ylim(bottom=0)
@@ -116,11 +146,14 @@ class RainScenarioModel:
         plt.setp(axs[3].xaxis.get_majorticklabels(), rotation=45)
         fig.suptitle(f'Série Temporal - Parada Real x Decisão Modelo ({nome.capitalize()})', fontsize=14)
         plt.tight_layout()
-        plt.savefig(f'{path}/serie_temporal_comparada_{nome}.png')
+        plt.savefig(os.path.join(path, f'serie_temporal_comparada_{nome}.png'))
         plt.close()
 
-    def _plotar_simples(self, nome, variaveis, path):
+    def _plotar_simples(self, nome: str, variaveis: List[str], path: str):
+        """Plota séries temporais simples (apenas um tipo de variável)."""
+
         fig, axs = plt.subplots(2, 1, figsize=(16, 6), sharex=True)
+
         for var in variaveis:
             axs[0].plot(self.df['time'], self.df[var], label=self.legendas_dict.get(var, var), linewidth=1)
             axs[1].plot(self.df['time'], self.df[var], label=self.legendas_dict.get(var, var), linewidth=1)
@@ -143,5 +176,5 @@ class RainScenarioModel:
         plt.setp(axs[1].xaxis.get_majorticklabels(), rotation=45)
         fig.suptitle(f'Série Temporal - Parada Real x Decisão Modelo ({nome.capitalize()})', fontsize=14)
         plt.tight_layout()
-        plt.savefig(f'{path}/serie_temporal_comparada_{nome}.png')
+        plt.savefig(os.path.join(path, f'serie_temporal_comparada_{nome}.png'))
         plt.close()

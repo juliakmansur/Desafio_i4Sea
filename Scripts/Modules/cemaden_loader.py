@@ -5,6 +5,10 @@ import pandas as pd
 
 
 class CemadenLoader:
+    """
+    Classe responsável por carregar e filtrar os dados das estações CEMADEN para o Porto de Paranaguá.
+    """
+
     def __init__(self, folder_path: str):
         self.folder_path = folder_path
         self.df = None
@@ -26,28 +30,44 @@ class CemadenLoader:
 
         return months
 
-    def load(self,  months: Union[str, List[str], Tuple[str, str]], station_code: str = None) -> pd.DataFrame:
+    def load(self, months: Union[str, List[str], Tuple[str, str]], station_code: str = None) -> pd.DataFrame:
+        """
+        Carrega os dados dos arquivos .csv do CEMADEN para os meses especificados.
+
+        Parâmetros:
+            months (str | list[str] | tuple[str, str]): mês, lista de meses ou intervalo (início, fim)
+            station_code (str, opcional): filtra os dados por código da estação
+
+        Retorna:
+            pd.DataFrame: Dados concatenados e padronizados
+        """
+
         if isinstance(months, str):
             months = [months]
         elif isinstance(months, tuple):
             months = self._get_month_range(months[0], months[1])
 
         dataframes = []
-        for m in months:
-            filepath = os.path.join(self.folder_path, f'Paranagua_{m}.csv')
-            if os.path.exists(filepath):
-                df = pd.read_csv(filepath, sep=';', encoding='utf-8')
+        for month in months:
+            path = os.path.join(self.folder_path, f'Paranagua_{month}.csv')
+            if not os.path.exists(path):
+                continue
 
-            df['valorMedida'] = df['valorMedida'].str.replace(',', '.', regex=False).astype(float)
-            df['latitude'] = df['latitude'].str.replace(',', '.', regex=False).astype(float)
-            df['longitude'] = df['longitude'].str.replace(',', '.', regex=False).astype(float)
+            df = pd.read_csv(path, sep=';', encoding='utf-8')
 
-            df['month'] = m
+            try:
+                df['valorMedida'] = df['valorMedida'].str.replace(',', '.', regex=False).astype(float)
+                df['latitude'] = df['latitude'].str.replace(',', '.', regex=False).astype(float)
+                df['longitude'] = df['longitude'].str.replace(',', '.', regex=False).astype(float)
+            except KeyError as e:
+                raise ValueError(f"Erro ao processar {path}: coluna ausente {e}")
+
+            df['month'] = month
 
             dataframes.append(df)
 
         if not dataframes:
-            raise FileNotFoundError('Nenhum arquivo correspondete aos meses informados foi encontrado')
+            raise FileNotFoundError('Nenhum arquivo correspondente aos meses informados foi encontrado.')
 
         self.df = pd.concat(dataframes, ignore_index=True)
 
@@ -56,24 +76,45 @@ class CemadenLoader:
 
         return self.df
 
-    def filter_by_station(self, station_name):
-        if self.df is None:
-            raise ValueError('Os dados ainda não foram carregados. Use o método load() primeiro.')
-        return self.df[self.df['nomeEstacao'].str.contains(station_name, case=False)]
+    def filter_by_station_code(self, station_code: str) -> pd.DataFrame:
+        """
+        Filtra os dados pelo código da estação (coluna `codEstacao`).
+        """
 
-    def filter_by_period(self, start_date, end_date):
         if self.df is None:
-            raise ValueError('Os dados ainda não foram carregados. Use o método load() primeiro.')
+            raise ValueError('Use o método load() antes de aplicar filtros.')
+
+        return self.df[self.df['codEstacao'] == station_code]
+
+    def filter_by_period(self, start_date: str, end_date: str):
+        """
+        Filtra os dados por período entre start_date e end_date.
+        """
+
+        if self.df is None:
+            raise ValueError('Use o método load() antes de aplicar filtros.')
+
         return self.df[(self.df['datahora'] >= start_date) & (self.df['datahora'] <= end_date)]
 
 
 class CemadenMerger:
-    def __init__(self, obs_df, forecast_df, tolerance='15min'):
+    """
+    Classe auxiliar para combinar os dados de previsão com os dados observados do CEMADEN.
+    """
+
+    def __init__(self, obs_df: pd.DataFrame, forecast_df: pd.DataFrame, tolerance: str = '1h'):
         self.obs_df = obs_df.copy()
         self.forecast_df = forecast_df.copy()
         self.tolerance = tolerance
 
-    def merge_data(self):
+    def merge_data(self) -> pd.DataFrame:
+        """
+        Realiza o merge com tolerância temporal entre dados observados e de previsão.
+
+        Retorna:
+            pd.DataFrame: Dados combinados com precipitação observada no tempo mais próximo.
+        """
+
         obs = self.obs_df.rename(columns={'datahora': 'time', 'valorMedida': 'precipacao_obs'})
         obs['time'] = pd.to_datetime(obs['time'])
         self.forecast_df['time'] = pd.to_datetime(self.forecast_df['time'])
@@ -85,4 +126,5 @@ class CemadenMerger:
             direction='nearest',
             tolerance=pd.Timedelta(self.tolerance)
         )
+
         return merged.dropna()
