@@ -21,10 +21,11 @@ O repositório está organizado da seguinte forma:
 Database/              → Dados brutos fornecidos no desafio  
 Outputs/               → Figuras, métricas e arquivos gerados pelas análises  
 Scripts/               → Notebooks e módulos Python usados nas análises  
-    ├── 00_unpack_and_organize.ipynb  
+    ├── unpack_and_organize.ipynb  
     ├── 01_load_and_merge.ipynb  
     ├── 02_exploratory_analysis.ipynb  
-    ├── 03_decision_model.ipynb  
+    ├── 03_decision_model.ipynb 
+    ├── 04_get_recomendation.ipynb 
     └── Modules/       → Scripts com funções auxiliares  
 ```
 
